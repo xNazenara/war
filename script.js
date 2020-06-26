@@ -52,18 +52,23 @@ const peasantPrice = document.querySelector('.peasant-price')
 const knightPrice = document.querySelector('.knight-price')
 const cavalryPrice = document.querySelector('.cavalry-price')
 const spiderPrice = document.querySelector('.spider-price')
-const topPath = document.querySelector('.top-path')
-const middlePath = document.querySelector('.middle-path')
 const bottomPath = document.querySelector('.bottom-path')
 const incomeUpgradeButton = document.querySelector('.income')
 const wallHealthUpgradeButton = document.querySelector('.wall-health')
 const newUnitUpgradeButton = document.querySelector('.new-unit')
+const unitShop = document.querySelector('.unit-shop')
+const paths = document.querySelector('.paths')
+const startStopButton = document.querySelector('.start-stop-button')
 
-let incomeRate = config.initialIncomeRate
-let incomeLevel = 0
-let wallHealthLevel = 0
-let wallHealthPrice = config.wallHealthUpgradePrice[0]
-let newUnitLevel = 0
+let incomeRate = null
+let incomeLevel = null
+let wallHealthLevel = null
+let wallHealthPrice = null
+let newUnitLevel = null
+let selectedUnit = null
+
+let active = false
+let timerId = null
 
 const initialLoad = () => {
   coins.innerText = config.initialCoins
@@ -75,15 +80,50 @@ const initialLoad = () => {
   knightPrice.innerText = config.creatures[1].price
   cavalryPrice.innerText = config.creatures[2].price
   spiderPrice.innerText = config.creatures[3].price
+
+  incomeRate = config.initialIncomeRate
+  incomeLevel = 0
+  wallHealthLevel = 0
+  wallHealthPrice = config.wallHealthUpgradePrice[0]
+  newUnitLevel = 0
+  selectedUnit = null
+
+  for (let w = 0; w < unitShop.children.length; w++) {
+    if (w > 0) {
+      unitShop.children[w].classList.add('disabled-unit')
+    }
+  }
+
+  for (let w = 0; w < paths.children.length; w++) {
+      paths.children[w].innerHTML = ''
+  }
 }
+
 initialLoad()
 
 const incomeHandle = () => {
-  setInterval(()=>{
+  return setInterval(()=>{
     coins.innerText = (Number(coins.innerText) + incomeRate).toFixed(2)
-  }, 200)
+  }, 30)
 }
-incomeHandle()
+
+startStopButton.addEventListener('click', e => {
+  if (active) {
+    active = false
+
+    startStopButton.innerText = 'Start'
+
+    initialLoad()
+
+    clearInterval(timerId)
+  } else {
+    active = true
+
+    startStopButton.innerText = 'Stop'
+
+    timerId = incomeHandle()
+  }
+})
 
 incomeUpgradeButton.addEventListener('click', (e)=>{
   if(incomeLevel < config.incomeUpgradeRate.length) {
@@ -121,6 +161,8 @@ newUnitUpgradeButton.addEventListener('click', (e)=>{
       newUnitLevel = newUnitLevel + 1
       coins.innerText = Number(coins.innerText) - config.newUnitUpgradePrice[newUnitLevel - 1]
 
+      unitShop.children[newUnitLevel].classList.remove('disabled-unit')
+
       if (newUnitLevel < config.newUnitUpgradePrice.length) {
         newUnitUpgradePrice.innerText = config.newUnitUpgradePrice[newUnitLevel]
       } else {
@@ -129,3 +171,55 @@ newUnitUpgradeButton.addEventListener('click', (e)=>{
     }
   }
 })
+
+
+for (let q = 0; q < unitShop.children.length; q++) {
+  unitShop.children[q].addEventListener('click', e => {
+    if (newUnitLevel >= q) {
+      if ([...unitShop.children[q].classList].includes('selected-unit')) {
+        selectedUnit = null
+
+        unitShop.children[q].classList.remove('selected-unit')
+      } else {
+        selectedUnit = unitShop.children[q].classList[0]
+
+        unitShop.children[q].classList.add('selected-unit')
+      }
+    }
+  })
+}
+
+for (let q = 0; q < paths.children.length; q++) {
+  if (paths.children[q].classList[0] !== 'empty-path') {
+    paths.children[q].addEventListener('click', e => {
+      if (selectedUnit) {
+        const unit = document.createElement('img')
+
+        unit.src = 'imgs/' + selectedUnit + '.png'
+
+        unit.style.left = '0px'
+
+        unit.classList.add('unit')
+
+        paths.children[q].appendChild(unit)
+
+        const move = () => setTimeout(()=>{
+            const oldLeftValue = unit.style.left.split('px')[0]
+
+            unit.style.left = Number(oldLeftValue) + 10 + 'px'
+
+            move()
+        }, 500)
+
+        move()
+
+        selectedUnit = null
+
+        for (let w = 0; w < unitShop.children.length; w++) {
+          unitShop.children[w].classList.remove('selected-unit')
+        }
+
+      }
+    })
+  }
+}

@@ -1,6 +1,7 @@
 const config = {
   initialCoins: 0,
   initialHealth: 100,
+  initialEnemyHealth: 100,
   initialIncomeRate: 0.25,
   incomeUpgradePrice: [
     10, 15, 20, 50, 60, 80
@@ -37,7 +38,7 @@ const config = {
     {
       name: 'spider',
       price: 20,
-      damage: 6,
+      damage: 30,
       health: 15
     }
   ]
@@ -59,6 +60,7 @@ const newUnitUpgradeButton = document.querySelector('.new-unit')
 const unitShop = document.querySelector('.unit-shop')
 const paths = document.querySelector('.paths')
 const startStopButton = document.querySelector('.start-stop-button')
+const enemyHealth = document.querySelector('.enemy-hp-value')
 
 let incomeRate = null
 let incomeLevel = null
@@ -73,6 +75,7 @@ let timerId = null
 const initialLoad = () => {
   coins.innerText = config.initialCoins
   hp.innerText = config.initialHealth
+  enemyHealth.innerText = config.initialEnemyHealth
   incomeUpgradePrice.innerText = config.incomeUpgradePrice[0]
   newUnitUpgradePrice.innerText = config.newUnitUpgradePrice[0]
   wallHealthUpgradePrice.innerText = config.wallHealthUpgradePrice[0]
@@ -89,6 +92,7 @@ const initialLoad = () => {
   selectedUnit = null
 
   for (let w = 0; w < unitShop.children.length; w++) {
+    unitShop.children[w].classList.remove('selected-unit')
     if (w > 0) {
       unitShop.children[w].classList.add('disabled-unit')
     }
@@ -175,15 +179,17 @@ newUnitUpgradeButton.addEventListener('click', (e)=>{
 
 for (let q = 0; q < unitShop.children.length; q++) {
   unitShop.children[q].addEventListener('click', e => {
-    if (newUnitLevel >= q) {
-      if ([...unitShop.children[q].classList].includes('selected-unit')) {
-        selectedUnit = null
+    if (active) {
+      if (newUnitLevel >= q) {
+        if ([...unitShop.children[q].classList].includes('selected-unit')) {
+          selectedUnit = null
 
-        unitShop.children[q].classList.remove('selected-unit')
-      } else {
-        selectedUnit = unitShop.children[q].classList[0]
+          unitShop.children[q].classList.remove('selected-unit')
+        } else {
+          selectedUnit = unitShop.children[q].classList[0]
 
-        unitShop.children[q].classList.add('selected-unit')
+          unitShop.children[q].classList.add('selected-unit')
+        }
       }
     }
   })
@@ -193,6 +199,8 @@ for (let q = 0; q < paths.children.length; q++) {
   if (paths.children[q].classList[0] !== 'empty-path') {
     paths.children[q].addEventListener('click', e => {
       if (selectedUnit) {
+        const selected = selectedUnit
+
         const unit = document.createElement('img')
 
         unit.src = 'imgs/' + selectedUnit + '.png'
@@ -201,17 +209,54 @@ for (let q = 0; q < paths.children.length; q++) {
 
         unit.classList.add('unit')
 
+        const travelTime = 5
+
+        const step = (paths.children[q].clientWidth - 50) / (travelTime)
+
         paths.children[q].appendChild(unit)
 
-        const move = () => setTimeout(()=>{
-            const oldLeftValue = unit.style.left.split('px')[0]
+        for (let w = 0; w < travelTime + 1; w++) {
+          setTimeout(()=>{
+            unit.style.left =  step * w + 'px'
+            if(w === travelTime) {
+              setTimeout(() => {
+                config.creatures.forEach(item => {
+                  if(selected === item.name) {
+                    if (Number(enemyHealth.innerText) - item.damage < 0) {
+                      enemyHealth.innerText = 0
 
-            unit.style.left = Number(oldLeftValue) + 10 + 'px'
+                      if (active) {
+                        alert("You won!")
 
-            move()
-        }, 500)
+                        startStopButton.disabled = true
 
-        move()
+                        active = false
+
+                        startStopButton.innerText = 'Start'
+
+                        setTimeout(()=>{
+                          initialLoad()
+
+                          startStopButton.disabled = false
+                        }, travelTime * 1000)
+
+
+                        clearInterval(timerId)
+                    }
+
+                    unit.remove()
+                    } else {
+                      enemyHealth.innerText = Number(enemyHealth.innerText) - item.damage
+
+                      unit.remove()
+                    }
+
+                  }
+                })
+              }, 500)
+            }
+          }, w * 1000 )
+        }
 
         selectedUnit = null
 
